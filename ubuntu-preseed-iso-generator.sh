@@ -90,8 +90,8 @@ function parse_params() {
                 [[ ! -f "${source_iso}" ]] && die "💥 Source ISO file could not be found."
         fi
 
-        destination_iso=$(realpath "${destination_iso}")
-        source_iso=$(realpath "${source_iso}")
+        destination_iso=$(realpath -m "${destination_iso}")
+        source_iso=$(realpath -m "${source_iso}")
 
         return 0
 }

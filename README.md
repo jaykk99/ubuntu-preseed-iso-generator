@@ -15,9 +15,12 @@ By default, the source ISO image is checked for integrity and authenticity using
 
 ### Requirements
 Tested on a host running Ubuntu 20.04.1.
-- Utilities required:
-    - ```p7zip-full```
-    - ```mkisofs``` or ```genisoimage```
+- Utilities required (the script checks for these and exits with a clear error if any are missing):
+    - ```xorriso```
+    - ```sed```
+    - ```curl```
+    - ```gpg```
+    - ```isolinux``` (provides ```/usr/lib/ISOLINUX/isohdpfx.bin```)
 
 ### Usage
 ```
