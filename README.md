@@ -1,80 +1,108 @@
 # Ubuntu Preseed ISO Generator
-Generate an ISO image for automated Ubuntu 20.04 desktop installations. This script uses the traditional preseed method.
 
-## [Looking for the server version?](https://github.com/covertsh/ubuntu-autoinstall-generator)
+Build a **fully automated Ubuntu 20.04 (Focal Fossa) desktop install ISO**.
+`build.sh` takes a stock Ubuntu 20.04 desktop ISO you supply, bakes in
+`preseed.cfg`, patches the UEFI and BIOS boot entries to run the installer
+unattended, and repacks a bootable hybrid ISO. Boot a machine from the output
+ISO and Ubuntu installs itself with zero prompts, then powers off.
 
-### Behavior
+> The older `ubuntu-preseed-iso-generator.sh` from upstream is kept for
+> reference. `build.sh` is the maintained entry point: it never downloads an
+> ISO and validates every input before touching anything.
 
-Check out the usage information below for arguments. The basic idea is to take an unmodified Ubuntu ISO image, extract it, add some kernel command line parameters and a preseed file, then repack the data into a new ISO. Creating the preseed file itself is outside the scope of this tool.
+## Requirements
 
-There is an example preseed file ```example.seed``` in this repository which will install Ubuntu using US English settings and UTC time zone with a user named "User" and password "ubuntu". You could modify that file to create your own custom configuration. Unlike the server version of this script, there is currently no way to provide the preseed configuration on a separate volume during the installation - it must be baked into the ISO image.
+- A Linux host (tested logic on Debian/Ubuntu-style systems)
+- `xorriso` and the isolinux MBR template:
+  ```bash
+  sudo apt install xorriso isolinux
+  ```
+- An Ubuntu 20.04 desktop ISO, e.g. `ubuntu-20.04.6-desktop-amd64.iso`
+  (download from https://releases.ubuntu.com/20.04/ — the script never
+  downloads one for you)
+- ~4 GB free disk space for the extracted ISO tree
 
-This script can use an existing ISO image or download the latest daily 64-bit image from the Ubuntu project. Using a fresh ISO speeds things up because there won't be as many packages to update during the installation.
+## Quick start
 
-By default, the source ISO image is checked for integrity and authenticity using GPG. This can be disabled with ```-k```.
+```bash
+# 1. (Optional) set your own login password in preseed.cfg
+openssl passwd -6   # paste the output into passwd/user-password-crypted
 
-### Requirements
-Tested on a host running Ubuntu 20.04.1.
-- Utilities required:
-    - ```p7zip-full```
-    - ```mkisofs``` or ```genisoimage```
+# 2. Build
+./build.sh -s ~/iso/ubuntu-20.04.6-desktop-amd64.iso
 
-### Usage
-```
-Usage: ubuntu-preseed-iso-generator.sh [-h] [-k] [-v] [-p preseed-configuration-file] [-s source-iso-file] [-d destination-iso-file]
-
-💁 This script will create fully-automated Ubuntu 20.04 Focal Fossa installation media.
-
-Available options:
-
--h, --help          Print this help and exit
--v, --verbose       Print script debug info
--p, --preseed       Path to preseed configuration file.
--k, --no-verify     Disable GPG verification of the source ISO file. By default SHA256SUMS-<current date> and
-                    SHA256SUMS-<current date>.gpg in <script directory> will be used to verify the authenticity and integrity
-                    of the source ISO file. If they are not present the latest daily SHA256SUMS will be
-                    downloaded and saved in <script directory>. The Ubuntu signing key will be downloaded and
-                    saved in a new keyring in <script directory>
--s, --source        Source ISO file. By default the latest daily ISO for Ubuntu 20.04 will be downloaded
-                    and saved as <script directory>/ubuntu-original-<current date>.iso
-                    That file will be used by default if it already exists.
--d, --destination   Destination ISO file. By default <script directory>/ubuntu-preseed-<current date>.iso will be
-                    created, overwriting any existing file.
+# 3. Flash and boot
+#    Output: ./ubuntu-20.04-preseed-<date>.iso
 ```
 
-### Example
+The machine boots the ISO, installs Ubuntu unattended, and powers off.
+Log in as `ubuntu` (or whatever you configured).
+
+## Usage
+
 ```
-user@testbox:~$ bash ubuntu-preseed-iso-generator.sh -p example.seed -d ubuntu-preseed-example.iso
-[2021-03-13 10:05:10] 👶 Starting up...
-[2021-03-13 10:05:10] 📁 Created temporary working directory /tmp/tmp.rrehvj78Bk
-[2021-03-13 10:05:10] 🔎 Checking for required utilities...
-[2021-03-13 10:05:10] 👍 All required utilities are installed.
-[2020-12-23 14:06:07] 🌎 Downloading current daily ISO image for Ubuntu 20.04 Focal Fossa...
-[2020-12-23 14:08:01] 👍 Downloaded and saved to /home/user/ubuntu-original-2021-03-13.iso
-[2020-12-23 14:08:01] 🌎 Downloading SHA256SUMS & SHA256SUMS.gpg files...
-[2020-12-23 14:08:02] 🌎 Downloading and saving Ubuntu signing key...
-[2020-12-23 14:08:02] 👍 Downloaded and saved to /home/user/843938DF228D22F7B3742BC0D94AA3F0EFE21092.keyring
-[2020-12-23 14:08:02] 🔐 Verifying /home/user/ubuntu-original-2021-03-13.iso integrity and authenticity...
-[2020-12-23 14:08:09] 👍 Verification succeeded.
-[2020-12-23 14:08:09] 🔧 Extracting ISO image...
-[2021-03-13 10:05:23] 👍 Extracted to /tmp/tmp.rrehvj78Bk
-[2021-03-13 10:05:23] 🧩 Adding preseed parameters to kernel command line...
-[2021-03-13 10:05:23] 👍 Added parameters to UEFI and BIOS kernel command lines.
-[2021-03-13 10:05:23] 🧩 Adding preseed configuration file...
-[2021-03-13 10:05:23] 👍 Added preseed file
-[2021-03-13 10:05:23] 👷 Updating /tmp/tmp.rrehvj78Bk/md5sum.txt with hashes of modified files...
-[2021-03-13 10:05:23] 👍 Updated hashes.
-[2021-03-13 10:05:23] 📦 Repackaging extracted files into an ISO image...
-[2021-03-13 10:05:35] 👍 Repackaged into /home/user/ubuntu-preseed-example.iso
-[2021-03-13 10:05:35] ✅ Completed.
-[2021-03-13 10:05:35] 🚽 Deleted temporary working directory /tmp/tmp.rrehvj78Bk
+./build.sh -s SOURCE_ISO [-p PRESEED] [-d DEST_ISO] [-h] [-v]
+
+  -s, --source PATH       Ubuntu 20.04 desktop ISO (required; never modified)
+  -p, --preseed PATH      Preseed file to bake in (default: ./preseed.cfg)
+  -d, --destination PATH  Output ISO (default: ./ubuntu-20.04-preseed-<date>.iso)
+  -v, --verbose           Print every command (set -x)
+  -h, --help              Show help
 ```
 
-Now you can boot your target machine using ```ubuntu-preseed-example.iso``` and it will automatically install Ubuntu using the configuration from ```example.seed```.
+### What the script does, step by step
 
-### Thanks
-This script is based on [this](https://betterdev.blog/minimal-safe-bash-script-template/) minimal safe bash template, and steps found in [this](https://askubuntu.com/questions/806820/how-do-i-create-a-completely-unattended-install-of-ubuntu-desktop-16-04-1-lts) Ask Ubuntu answer.
+1. **Validates inputs** — source ISO exists and is actually an ISO 9660
+   image, preseed file exists and every line matches the
+   `owner key type [value]` format, destination dir is writable and differs
+   from the source, `xorriso` and the isolinux MBR template are installed.
+2. **Extracts** the source ISO to a temp dir with `xorriso -osirrox`.
+3. **Patches boot entries** — `boot/grub/grub.cfg` and
+   `boot/grub/loopback.cfg` (UEFI) get
+   `file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper
+   automatic-ubiquity quiet splash noprompt noshell`; `isolinux/txt.cfg`
+   (BIOS) is rewritten with the same parameters.
+4. **Embeds** your preseed file as `/preseed/custom.seed` in the ISO.
+5. **Removes `md5sum.txt`** — the stock checksums no longer match the
+   modified files, and a stale file breaks the installer's integrity check.
+6. **Repacks** a hybrid (UEFI + BIOS bootable) ISO with `xorriso -as mkisofs`
+   and cleans up the temp dir.
 
+### Changing the install
 
-### License
-MIT license.
+Edit `preseed.cfg` and rebuild. The knobs you'll most likely want:
+
+| Setting | Key in preseed.cfg | Default |
+|---|---|---|
+| Username / full name | `passwd/username`, `passwd/user-fullname` | `ubuntu` / `Ubuntu User` |
+| Password (crypted!) | `passwd/user-password-crypted` | `ubuntu` ⚠️ change this |
+| Timezone | `time/zone` | `America/Winnipeg` |
+| Keyboard | `keyboard-configuration/layoutcode` | `us` |
+| Hostname | `netcfg/get_hostname` | `ubuntu` |
+| Target disk | `partman-auto/disk` | `/dev/sda` (wiped!) |
+| Extra packages | `pkgsel/include` | `openssh-server vim curl git net-tools` |
+| Power off vs reboot when done | `ubiquity/poweroff` / `ubiquity/reboot` | power off |
+
+⚠️ **Passwords:** generate a crypted hash with `openssl passwd -6` and
+replace the value of `passwd/user-password-crypted`. Never ship an ISO with
+the default password anywhere real.
+
+⚠️ **Partitioning wipes `/dev/sda`.** Point `partman-auto/disk` at the right
+device for your hardware before building.
+
+## Validation
+
+- `bash -n build.sh` — syntax check, clean.
+- `debconf-set-selections -c preseed.cfg` — preseed format check, clean.
+- `build.sh` itself sanity-checks the preseed line format before building.
+- End-to-end build logic tested against a stubbed `xorriso` with a fixture
+  Ubuntu ISO layout: boot entries patched, preseed embedded, stale
+  `md5sum.txt` removed, output ISO produced (both absolute and relative
+  destination paths), and every error path (missing source, non-ISO input,
+  malformed preseed, missing xorriso, unknown option) exits with a clear
+  message. A real `xorriso` run on an actual Ubuntu ISO is still recommended
+  before production use.
+
+## License
+
+MIT — see `LICENSE`.
