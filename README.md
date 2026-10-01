@@ -24,26 +24,50 @@ Tested on a host running Ubuntu 20.04.1.
 
 ### Usage
 ```
-Usage: ubuntu-preseed-iso-generator.sh [-h] [-k] [-v] [-p preseed-configuration-file] [-s source-iso-file] [-d destination-iso-file]
+Usage: ubuntu-preseed-iso-generator.sh [-h] [-k] [-v] [-n] [-i] [-t] [-p preseed-file] [-s source-iso] [-d destination-iso]
 
-💁 This script will create fully-automated Ubuntu 20.04 Focal Fossa installation media.
+💁 This script creates fully-automated Ubuntu 20.04 Focal Fossa installation media.
+It takes a stock Ubuntu ISO, injects your preseed file plus the kernel command-line
+parameters needed for a hands-free install, and repacks everything into a new ISO.
 
 Available options:
 
 -h, --help          Print this help and exit
+    --version       Print the script version and exit
 -v, --verbose       Print script debug info
--p, --preseed       Path to preseed configuration file.
--k, --no-verify     Disable GPG verification of the source ISO file. By default SHA256SUMS-<current date> and
-                    SHA256SUMS-<current date>.gpg in <script directory> will be used to verify the authenticity and integrity
-                    of the source ISO file. If they are not present the latest daily SHA256SUMS will be
-                    downloaded and saved in <script directory>. The Ubuntu signing key will be downloaded and
-                    saved in a new keyring in <script directory>
--s, --source        Source ISO file. By default the latest daily ISO for Ubuntu 20.04 will be downloaded
-                    and saved as <script directory>/ubuntu-original-<current date>.iso
-                    That file will be used by default if it already exists.
--d, --destination   Destination ISO file. By default <script directory>/ubuntu-preseed-<current date>.iso will be
-                    created, overwriting any existing file.
+-n, --dry-run       Run every check and print what would happen, without
+                    downloading, extracting or writing anything
+-i, --interactive   Prompt for the preseed file, source ISO and destination,
+                    validating each answer
+-t, --keep-tmp      Keep the temporary working directory after the run
+                    (useful for debugging)
+-k, --no-verify     Disable GPG verification of the source ISO file. By default
+                    SHA256SUMS-<current date> and SHA256SUMS-<current date>.gpg in
+                    <script directory> are used to verify the authenticity and
+                    integrity of the source ISO file. If they are not present the
+                    latest daily SHA256SUMS files are downloaded and saved in
+                    <script directory>, along with the Ubuntu signing key in a new
+                    keyring in <script directory>
+-p, --preseed       Path to the preseed configuration file (required).
+-s, --source        Source ISO file. By default the latest daily ISO for
+                    Ubuntu 20.04 is downloaded and saved as
+                    <script directory>/ubuntu-original-<current date>.iso
+                    That file is reused by default if it already exists.
+-d, --destination   Destination ISO file. By default
+                    <script directory>/ubuntu-preseed-<current date>.iso is created,
+                    overwriting any existing file.
+
+Examples:
+  ubuntu-preseed-iso-generator.sh -p example.seed
+  ubuntu-preseed-iso-generator.sh -p mysetup.seed -s ~/isos/focal-desktop-amd64.iso -d ~/my-auto-install.iso
+  ubuntu-preseed-iso-generator.sh -i -n          # answer prompts, then only show the plan
 ```
+
+Before doing anything destructive the script runs pre-flight checks: all required
+utilities are present (with install hints when they aren't), the preseed file is
+readable and non-empty, source and destination aren't the same file, the
+destination directory is writable, and there is enough free disk space for
+extraction plus repackaging. Use `-n`/`--dry-run` to see the full plan first.
 
 ### Example
 ```

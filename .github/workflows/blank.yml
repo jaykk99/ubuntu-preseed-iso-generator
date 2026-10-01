@@ -8,10 +8,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  syntax-check:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Bash syntax check
         run: bash -n ubuntu-preseed-iso-generator.sh
+
+      - name: Install shellcheck and ISO tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck xorriso isolinux
+
+      - name: Shellcheck
+        run: shellcheck -S warning ubuntu-preseed-iso-generator.sh
+
+      - name: Dry-run smoke test
+        run: |
+          # 1 MiB stand-in for a real ISO; dry-run never extracts or writes it.
+          dd if=/dev/zero of=/tmp/fake.iso bs=1M count=1 status=none
+          ./ubuntu-preseed-iso-generator.sh -n -k -p example.seed -s /tmp/fake.iso -d /tmp/out-test.iso
+
+      - name: Error-path smoke tests
+        run: |
+          set +e
+          ./ubuntu-preseed-iso-generator.sh --bogus 2>/dev/null;          test $? -ne 0 || exit 1
+          ./ubuntu-preseed-iso-generator.sh -n -p /nonexistent.seed 2>/dev/null; test $? -ne 0 || exit 1
+          dd if=/dev/zero of=/tmp/fake2.iso bs=1M count=1 status=none
+          ./ubuntu-preseed-iso-generator.sh -n -k -p example.seed -s /tmp/fake2.iso -d /tmp/fake2.iso 2>/dev/null; test $? -ne 0 || exit 1
+          echo "all error paths exit non-zero as expected"
