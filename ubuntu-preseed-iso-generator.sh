@@ -46,7 +46,6 @@ autoinstall_packages=""
 autoinstall_timezone="Etc/UTC"
 autoinstall_locale="en_US.UTF-8"
 user_data_file=""
-meta_data_file=""
 
 # Release -> codename used by cdimage.ubuntu.com daily-live paths.
 release_codename() {
@@ -210,7 +209,6 @@ parse_params() {
         autoinstall_timezone="Etc/UTC"
         autoinstall_locale="en_US.UTF-8"
         user_data_file=""
-        meta_data_file=""
 
         while :; do
                 case "${1-}" in
