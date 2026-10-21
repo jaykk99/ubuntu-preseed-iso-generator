@@ -38,3 +38,16 @@ jobs:
           dd if=/dev/zero of=/tmp/fake2.iso bs=1M count=1 status=none
           ./ubuntu-preseed-iso-generator.sh -n -k -p example.seed -s /tmp/fake2.iso -d /tmp/fake2.iso 2>/dev/null; test $? -ne 0 || exit 1
           echo "all error paths exit non-zero as expected"
+
+      - name: Full test harness (autoinstall + preseed)
+        run: ./tests/run.sh
+
+      - name: Real seed ISO build (autoinstall)
+        run: |
+          ./ubuntu-preseed-iso-generator.sh --autoinstall \
+            --username ci-user --password-hash '$6$ci$testhash' \
+            --hostname ci-test -d /tmp/ci-seed.iso
+          test -s /tmp/ci-seed.iso
+          xorriso -indev /tmp/ci-seed.iso -find / -maxdepth 1 | grep -q 'user-data'
+          xorriso -indev /tmp/ci-seed.iso -find / -maxdepth 1 | grep -q 'meta-data'
+          echo "seed ISO contains user-data + meta-data"

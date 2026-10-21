@@ -1,5 +1,14 @@
 # Ubuntu Preseed ISO Generator
-Generate an ISO image for automated Ubuntu 20.04 desktop installations. This script uses the traditional preseed method.
+Generate an ISO image for automated Ubuntu installations. Two modes:
+
+- **Preseed mode** (default): Ubuntu 20.04 desktop ISO + preseed file, patched
+  and repacked into a hands-free installer ISO (debian-installer).
+- **Autoinstall mode** (`--autoinstall`): Ubuntu 22.04/24.04/25.10. Builds a
+  cloud-init "nocloud" seed ISO (volume label `cidata`) with a subiquity
+  autoinstall `user-data` + `meta-data`. Boot any stock 22.04+ installer ISO
+  with the seed attached and the install runs unattended. Preseed is legacy
+  on 22.04+ (debian-installer was removed there); autoinstall is the
+  supported path.
 
 ## [Looking for the server version?](https://github.com/covertsh/ubuntu-autoinstall-generator)
 
@@ -21,6 +30,9 @@ Tested on a host running Ubuntu 20.04.1.
     - ```curl```
     - ```gpg```
     - ```isolinux``` (provides ```/usr/lib/ISOLINUX/isohdpfx.bin```)
+
+Autoinstall mode only needs ```xorriso``` (plus optional ```openssl``` to hash
+`--password`, and python3 + PyYAML for full YAML validation of user-data).
 
 ### Usage
 ```
@@ -62,6 +74,34 @@ Examples:
   ubuntu-preseed-iso-generator.sh -p mysetup.seed -s ~/isos/focal-desktop-amd64.iso -d ~/my-auto-install.iso
   ubuntu-preseed-iso-generator.sh -i -n          # answer prompts, then only show the plan
 ```
+
+### Autoinstall mode (Ubuntu 22.04/24.04/25.10)
+
+```bash
+# Generate a user-data from flags and build the seed ISO:
+ubuntu-preseed-iso-generator.sh --autoinstall --username jay \
+  --password-hash '$6$...' --hostname srv1 \
+  --ssh-key "$(cat ~/.ssh/id_ed25519.pub)" --packages "git,curl" \
+  --timezone America/Winnipeg
+
+# Use your own cloud-config instead of generating one:
+ubuntu-preseed-iso-generator.sh --autoinstall --user-data my-user-data.yaml
+
+# Pick the release (default 24.04 in autoinstall mode):
+ubuntu-preseed-iso-generator.sh --autoinstall --release 22.04 --username jay --password s3cret -n
+```
+
+In autoinstall mode the script validates your options (username/hostname shape,
+a login method is present), renders `user-data`, validates it structurally
+(plus a real YAML parse when python3 + PyYAML are available), writes
+`meta-data`, and packs both into the seed ISO with volume label `cidata`.
+Then boot a stock installer ISO for the same release with the seed ISO
+attached as a second CD (QEMU: `-drive file=seed.iso,format=raw`) — the
+installer picks it up automatically and installs with zero prompts.
+
+`--password` (plaintext) is hashed with `openssl passwd -6` when openssl is
+available; prefer `--password-hash` with a pre-hashed `$6$` crypt string so
+the plaintext never appears on the command line.
 
 Before doing anything destructive the script runs pre-flight checks: all required
 utilities are present (with install hints when they aren't), the preseed file is
